@@ -16,11 +16,11 @@ plugins {
 }
 
 android {
-    namespace = "com.metrolist.music"
+    namespace = "com.dj edgar.music"
     compileSdk = 36
 
     defaultConfig {
-        applicationId = "com.metrolist.music"
+        applicationId = "com.dj edgar.music"
         minSdk = 26
         targetSdk = 36
         versionCode = 135

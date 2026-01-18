@@ -820,9 +820,13 @@ class SyncUtils @Inject constructor(
 
                     val selectedCsv = context.dataStore[SelectedYtmPlaylistsKey] ?: ""
                     val selectedIds = selectedCsv.split(',').map { it.trim() }.filter { it.isNotEmpty() }.toSet()
+                    val remotePlaylistIds = remotePlaylists.map { it.id }.toSet()
 
-                    val playlistsToSync = if (selectedIds.isNotEmpty()) {
-                        remotePlaylists.filter { it.id in selectedIds }
+                    // Check if any selected IDs match remote playlists
+                    // If none match (e.g., after account switch), sync all playlists
+                    val validSelectedIds = selectedIds.intersect(remotePlaylistIds)
+                    val playlistsToSync = if (validSelectedIds.isNotEmpty()) {
+                        remotePlaylists.filter { it.id in validSelectedIds }
                     } else {
                         remotePlaylists
                     }

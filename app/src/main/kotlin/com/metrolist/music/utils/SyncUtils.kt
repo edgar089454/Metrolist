@@ -817,20 +817,7 @@ class SyncUtils @Inject constructor(
                     val remotePlaylists = page.items.filterIsInstance<PlaylistItem>()
                         .filterNot { it.id == "LM" || it.id == "SE" }
                         .reversed()
-
-                    val selectedCsv = context.dataStore[SelectedYtmPlaylistsKey] ?: ""
-                    val selectedIds = selectedCsv.split(',').map { it.trim() }.filter { it.isNotEmpty() }.toSet()
-                    val remotePlaylistIds = remotePlaylists.map { it.id }.toSet()
-
-                    // Check if any selected IDs match remote playlists
-                    // If none match (e.g., after account switch), sync all playlists
-                    val validSelectedIds = selectedIds.intersect(remotePlaylistIds)
-                    val playlistsToSync = if (validSelectedIds.isNotEmpty()) {
-                        remotePlaylists.filter { it.id in validSelectedIds }
-                    } else {
-                        remotePlaylists
-                    }
-                    val remoteIds = playlistsToSync.map { it.id }.toSet()
+                    val remoteIds = remotePlaylists.map { it.id }.toSet()
 
                     val localPlaylists = database.playlistsByNameAsc().first()
                     localPlaylists.filterNot { it.playlist.browseId in remoteIds }
@@ -844,12 +831,11 @@ class SyncUtils @Inject constructor(
                             }
                         }
 
-                    for (playlist in playlistsToSync) {
+                    for (playlist in remotePlaylists) {
                         try {
-                            val existingPlaylist = database.playlistByBrowseId(playlist.id).firstOrNull()
+                            var playlistEntity = localPlaylists.find { it.playlist.browseId == playlist.id }?.playlist
 
-                            val playlistEntity: PlaylistEntity
-                            if (existingPlaylist == null) {
+                            if (playlistEntity == null) {
                                 playlistEntity = PlaylistEntity(
                                     name = playlist.title,
                                     browseId = playlist.id,
@@ -866,7 +852,6 @@ class SyncUtils @Inject constructor(
                                 database.insert(playlistEntity)
                                 Timber.d("syncSavedPlaylists: Created new playlist ${playlist.title} (${playlist.id})")
                             } else {
-                                playlistEntity = existingPlaylist.playlist
                                 database.update(playlistEntity, playlist)
                                 Timber.d("syncSavedPlaylists: Updated existing playlist ${playlist.title} (${playlist.id})")
                             }
@@ -879,7 +864,7 @@ class SyncUtils @Inject constructor(
                     }
 
                     updateState { copy(playlists = SyncStatus.Completed) }
-                    Timber.d("Synced ${playlistsToSync.size} saved playlists")
+                    Timber.d("Synced ${remotePlaylists.size} saved playlists")
                 } catch (e: Exception) {
                     Timber.e(e, "Error processing saved playlists")
                     updateState { copy(playlists = SyncStatus.Error(e.message ?: "Unknown error")) }
